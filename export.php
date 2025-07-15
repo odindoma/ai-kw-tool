@@ -1,12 +1,5 @@
 <?php
 require_once 'config.php';
-require_once 'vendor/autoload.php';
-
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
-use PhpOffice\PhpSpreadsheet\Style\Font;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 // Получение параметров фильтрации (те же что и в view.php)
 $documentFilter = $_GET['document'] ?? '';
@@ -43,15 +36,22 @@ try {
     
     $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
     
-    // Получение всех данных (без пагинации для экспорта)
+    // Получение всех данных с группировкой (аналогично обновленному view.php)
     $dataQuery = "
-        SELECT e.keyword, e.yahoo_show_rate, e.advertiser, e.est_rpc,
-               d.original_filename, d.country_code, d.upload_date
+        SELECT 
+            e.keyword,
+            MAX(e.yahoo_show_rate) as yahoo_show_rate,
+            MAX(e.est_rpc) as est_rpc,
+            d.original_filename, 
+            d.country_code,
+            COUNT(*) as duplicate_count
         FROM excel_data e 
         JOIN documents d ON e.document_id = d.id 
         $whereClause
-        ORDER BY e.id DESC
+        GROUP BY e.document_id, e.keyword, d.original_filename, d.country_code
+        ORDER BY MAX(e.est_rpc) DESC, e.document_id DESC, e.keyword ASC
     ";
+    
     $dataStmt = $pdo->prepare($dataQuery);
     $dataStmt->execute($params);
     $data = $dataStmt->fetchAll();
@@ -59,81 +59,6 @@ try {
     if (empty($data)) {
         die('Нет данных для экспорта');
     }
-    
-    // Создание Excel файла
-    $spreadsheet = new Spreadsheet();
-    $sheet = $spreadsheet->getActiveSheet();
-    $sheet->setTitle('Exported Data');
-    
-    // Заголовки
-    $headers = [
-        'A1' => 'Keyword',
-        'B1' => 'Yahoo Show Rate',
-        'C1' => 'Advertiser',
-        'D1' => 'Est. RPC $',
-        'E1' => 'Document',
-        'F1' => 'Country Code',
-        'G1' => 'Upload Date'
-    ];
-    
-    // Установка заголовков
-    foreach ($headers as $cell => $value) {
-        $sheet->setCellValue($cell, $value);
-    }
-    
-    // Стилизация заголовков
-    $headerStyle = [
-        'font' => [
-            'bold' => true,
-            'color' => ['rgb' => 'FFFFFF']
-        ],
-        'fill' => [
-            'fillType' => Fill::FILL_SOLID,
-            'startColor' => ['rgb' => '667eea']
-        ],
-        'alignment' => [
-            'horizontal' => Alignment::HORIZONTAL_CENTER,
-            'vertical' => Alignment::VERTICAL_CENTER
-        ]
-    ];
-    
-    $sheet->getStyle('A1:G1')->applyFromArray($headerStyle);
-    
-    // Заполнение данными
-    $row = 2;
-    foreach ($data as $record) {
-        $sheet->setCellValue('A' . $row, $record['keyword']);
-        $sheet->setCellValue('B' . $row, $record['yahoo_show_rate']);
-        $sheet->setCellValue('C' . $row, $record['advertiser']);
-        $sheet->setCellValue('D' . $row, $record['est_rpc']);
-        $sheet->setCellValue('E' . $row, $record['original_filename']);
-        $sheet->setCellValue('F' . $row, $record['country_code']);
-        $sheet->setCellValue('G' . $row, date('d.m.Y H:i', strtotime($record['upload_date'])));
-        $row++;
-    }
-    
-    // Автоматическая ширина колонок
-    foreach (range('A', 'G') as $column) {
-        $sheet->getColumnDimension($column)->setAutoSize(true);
-    }
-    
-    // Стилизация данных
-    $dataRange = 'A2:G' . ($row - 1);
-    $dataStyle = [
-        'alignment' => [
-            'vertical' => Alignment::VERTICAL_TOP,
-            'wrapText' => true
-        ]
-    ];
-    $sheet->getStyle($dataRange)->applyFromArray($dataStyle);
-    
-    // Стилизация колонки Est. RPC $ (числовой формат)
-    $rpcRange = 'D2:D' . ($row - 1);
-    $sheet->getStyle($rpcRange)->getNumberFormat()->setFormatCode('0.0000');
-    $sheet->getStyle($rpcRange)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-    
-    // Добавление фильтров
-    $sheet->setAutoFilter('A1:G' . ($row - 1));
     
     // Создание имени файла
     $filename = 'export_' . date('Y-m-d_H-i-s');
@@ -157,10 +82,10 @@ try {
         $filename .= '_' . implode('_', $filterInfo);
     }
     
-    $filename .= '.xlsx';
+    $filename .= '.csv';
     
-    // Отправка файла
-    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    // Установка заголовков для CSV
+    header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment;filename="' . $filename . '"');
     header('Cache-Control: max-age=0');
     header('Cache-Control: max-age=1');
@@ -169,11 +94,43 @@ try {
     header('Cache-Control: cache, must-revalidate');
     header('Pragma: public');
     
-    $writer = new Xlsx($spreadsheet);
-    $writer->save('php://output');
+    // Открытие потока вывода
+    $output = fopen('php://output', 'w');
+    
+    // Добавление BOM для корректного отображения в Excel
+    fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+    
+    // Заголовки CSV (без Advertiser и Upload Date)
+    $headers = [
+        'Keyword',
+        'Yahoo Show Rate',
+        'Est. RPC $',
+        'Document',
+        'Country Code',
+        'Records Count'
+    ];
+    
+    // Запись заголовков
+    fputcsv($output, $headers, ';'); // Используем ; как разделитель для лучшей совместимости с Excel
+    
+    // Запись данных
+    foreach ($data as $record) {
+        $row = [
+            $record['keyword'],
+            $record['yahoo_show_rate'],
+            $record['est_rpc'] !== null ? number_format($record['est_rpc'], 4, '.', '') : '',
+            $record['original_filename'],
+            $record['country_code'],
+            $record['duplicate_count']
+        ];
+        
+        fputcsv($output, $row, ';');
+    }
+    
+    // Закрытие потока
+    fclose($output);
     
 } catch (Exception $e) {
     die('Ошибка при экспорте: ' . $e->getMessage());
 }
 ?>
-
