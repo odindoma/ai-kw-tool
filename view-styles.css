@@ -542,3 +542,76 @@
     }
 }
 
+/* Стили для выделения диапазона */
+.range-selected {
+    background-color: #e3f2fd !important;
+    animation: rangeHighlight 0.3s ease-out;
+}
+
+@keyframes rangeHighlight {
+    0% {
+        background-color: #2196f3;
+        transform: scale(1.01);
+    }
+    100% {
+        background-color: #e3f2fd;
+        transform: scale(1);
+    }
+}
+
+/* Стили для подсказки о Shift */
+.shift-tooltip {
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 6px;
+    padding: 10px 15px;
+    margin: 15px 0;
+    font-size: 14px;
+    color: #856404;
+    text-align: center;
+    animation: fadeInOut 0.3s ease-in;
+}
+
+.shift-tooltip kbd {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #495057;
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translateY(-10px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Улучшение визуального отображения чекбоксов */
+.keyword-checkbox {
+    cursor: pointer;
+    transform: scale(1.1);
+}
+
+.keyword-checkbox:hover {
+    transform: scale(1.2);
+}
+
+/* Стили для строк таблицы при наведении */
+.data-table tbody tr:hover {
+    background-color: #f8f9fa;
+    transition: background-color 0.2s ease;
+}
+
+/* Активный стиль для выбранных строк */
+.data-table tbody tr:has(.keyword-checkbox:checked) {
+    background-color: #e8f4fd;
+    border-left: 3px solid #007bff;
+}
+
+/* Fallback для браузеров без поддержки :has() */
+.data-table tbody tr.selected-row {
+    background-color: #e8f4fd;
+    border-left: 3px solid #007bff;
+}
+

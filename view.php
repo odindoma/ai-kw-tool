@@ -329,12 +329,16 @@ try {
             <?php endif; ?>
         </main>
     </div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const selectAllCheckbox = document.getElementById('select-all');
     const keywordCheckboxes = document.querySelectorAll('.keyword-checkbox');
     const bulkActionsDiv = document.getElementById('bulk-actions');
     const selectedCountSpan = document.getElementById('selected-count');
+    
+    let lastCheckedIndex = -1; // Индекс последнего выбранного чекбокса
+    let isShiftSelection = false; // Флаг для предотвращения двойного срабатывания
     
     // Обработчик для "Выбрать все"
     if (selectAllCheckbox) {
@@ -343,17 +347,107 @@ document.addEventListener('DOMContentLoaded', function() {
                 checkbox.checked = this.checked;
             });
             updateBulkActions();
+            lastCheckedIndex = -1; // Сбрасываем последний выбранный индекс
         });
     }
     
-    // Обработчики для отдельных чекбоксов
-    keywordCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', updateBulkActions);
+    // Обработчики для отдельных чекбоксов с поддержкой Shift
+    keywordCheckboxes.forEach((checkbox, index) => {
+        checkbox.addEventListener('mousedown', function(event) {
+            if (event.shiftKey && lastCheckedIndex !== -1 && lastCheckedIndex !== index) {
+                event.preventDefault(); // Предотвращаем стандартное поведение
+                isShiftSelection = true; // Устанавливаем флаг
+                
+                // Определяем, какое состояние будет у текущего чекбокса
+                const targetState = !this.checked;
+                
+                // Устанавливаем состояние текущего чекбокса
+                this.checked = targetState;
+                
+                // Выбираем диапазон с тем же состоянием
+                selectRange(lastCheckedIndex, index, targetState);
+                
+                // Обновляем последний выбранный индекс
+                lastCheckedIndex = index;
+                
+                updateBulkActions();
+                
+                // Сбрасываем флаг через небольшую задержку
+                setTimeout(() => {
+                    isShiftSelection = false;
+                }, 10);
+            }
+        });
+        
+        checkbox.addEventListener('change', function(event) {
+            // Игнорируем событие change если это было Shift+клик
+            if (isShiftSelection) {
+                return;
+            }
+            
+            // Обрабатываем обычные клики (без Shift)
+            if (!event.shiftKey) {
+                lastCheckedIndex = index;
+                updateBulkActions();
+            }
+        });
+        
+        // Добавляем обработчик click для дополнительной защиты
+        checkbox.addEventListener('click', function(event) {
+            if (isShiftSelection) {
+                event.preventDefault();
+                event.stopPropagation();
+                return false;
+            }
+        });
     });
+    
+    function selectRange(startIndex, endIndex, checked) {
+        const start = Math.min(startIndex, endIndex);
+        const end = Math.max(startIndex, endIndex);
+        
+        // Выделяем все чекбоксы в диапазоне
+        for (let i = start; i <= end; i++) {
+            if (keywordCheckboxes[i]) {
+                keywordCheckboxes[i].checked = checked;
+            }
+        }
+        
+        // Добавляем визуальную обратную связь
+        showRangeSelection(start, end);
+    }
+    
+    function showRangeSelection(start, end) {
+        // Добавляем временный класс для визуального выделения диапазона
+        for (let i = start; i <= end; i++) {
+            if (keywordCheckboxes[i]) {
+                const row = keywordCheckboxes[i].closest('tr');
+                if (row) {
+                    row.classList.add('range-selected');
+                    // Убираем класс через короткое время
+                    setTimeout(() => {
+                        row.classList.remove('range-selected');
+                    }, 300);
+                }
+            }
+        }
+    }
     
     function updateBulkActions() {
         const selectedCheckboxes = document.querySelectorAll('.keyword-checkbox:checked');
         const count = selectedCheckboxes.length;
+        
+        // Обновляем классы для выбранных строк (fallback для браузеров без :has())
+        keywordCheckboxes.forEach(checkbox => {
+            const row = checkbox.closest('tr');
+            if (row) {
+                if (checkbox.checked) {
+                    row.classList.add('selected-row');
+                } else {
+                    row.classList.remove('selected-row');
+                }
+            }
+        });
         
         if (count > 0) {
             bulkActionsDiv.style.display = 'block';
@@ -377,86 +471,11 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('set-new')?.addEventListener('click', function() {
         updateSelectedStatus('New');
     });
-
+    
     // Обработчик для кнопки копирования
     document.getElementById('copy-keywords')?.addEventListener('click', function() {
         copySelectedKeywords();
     });
-
-    function copySelectedKeywords() {
-        const selectedCheckboxes = document.querySelectorAll('.keyword-checkbox:checked');
-        
-        if (selectedCheckboxes.length === 0) {
-            alert('Выберите хотя бы один кейворд для копирования');
-            return;
-        }
-        
-        // Собираем кейворды из data-атрибутов
-        const keywords = [];
-        selectedCheckboxes.forEach(checkbox => {
-            const keyword = checkbox.getAttribute('data-keyword');
-            if (keyword && !keywords.includes(keyword)) {
-                keywords.push(keyword);
-            }
-        });
-        
-        if (keywords.length === 0) {
-            alert('Не удалось получить кейворды для копирования');
-            return;
-        }
-        
-        // Создаем текст для копирования (каждый кейворд с новой строки)
-        const textToCopy = keywords.join('\n');
-        
-        // Копируем в буфер обмена
-        if (navigator.clipboard && window.isSecureContext) {
-            // Современный способ через Clipboard API
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                showCopySuccess(keywords.length);
-            }).catch(() => {
-                fallbackCopyToClipboard(textToCopy, keywords.length);
-            });
-        } else {
-            // Fallback для старых браузеров
-            fallbackCopyToClipboard(textToCopy, keywords.length);
-        }
-    }
-
-    function fallbackCopyToClipboard(text, count) {
-        // Создаем временный textarea элемент
-        const textArea = document.createElement('textarea');
-        textArea.value = text;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-999999px';
-        textArea.style.top = '-999999px';
-        document.body.appendChild(textArea);
-        textArea.select();
-        
-        try {
-            document.execCommand('copy');
-            showCopySuccess(count);
-        } catch (err) {
-            console.error('Fallback copy failed:', err);
-            alert('Не удалось скопировать кейворды в буфер обмена');
-        } finally {
-            document.body.removeChild(textArea);
-        }
-    }
-
-    function showCopySuccess(count) {
-        // Показываем уведомление об успешном копировании
-        const copyButton = document.getElementById('copy-keywords');
-        const originalText = copyButton.textContent;
-        
-        copyButton.textContent = `✅ Скопировано ${count} кейворд${count > 1 ? (count < 5 ? 'а' : 'ов') : ''}!`;
-        copyButton.style.backgroundColor = '#28a745';
-        
-        setTimeout(() => {
-            copyButton.textContent = originalText;
-            copyButton.style.backgroundColor = '';
-        }, 2000);
-    }
-
     
     function updateSelectedStatus(status) {
         const selectedCheckboxes = document.querySelectorAll('.keyword-checkbox:checked');
@@ -495,8 +514,121 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Произошла ошибка при обновлении статуса');
         });
     }
+    
+    function copySelectedKeywords(format = 'line') {
+        const selectedCheckboxes = document.querySelectorAll('.keyword-checkbox:checked');
+        
+        if (selectedCheckboxes.length === 0) {
+            alert('Выберите хотя бы один кейворд для копирования');
+            return;
+        }
+        
+        // Собираем кейворды из data-атрибутов
+        const keywords = [];
+        selectedCheckboxes.forEach(checkbox => {
+            const keyword = checkbox.getAttribute('data-keyword');
+            if (keyword && !keywords.includes(keyword)) {
+                keywords.push(keyword);
+            }
+        });
+        
+        if (keywords.length === 0) {
+            alert('Не удалось получить кейворды для копирования');
+            return;
+        }
+        
+        // Форматируем текст в зависимости от выбранного формата
+        let textToCopy;
+        switch (format) {
+            case 'comma':
+                textToCopy = keywords.join(', ');
+                break;
+            case 'quotes':
+                textToCopy = '"' + keywords.join('", "') + '"';
+                break;
+            case 'line':
+            default:
+                textToCopy = keywords.join('\n');
+                break;
+        }
+        
+        // Копируем в буфер обмена
+        if (navigator.clipboard && window.isSecureContext) {
+            // Современный способ через Clipboard API
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                showCopySuccess(keywords.length);
+            }).catch(() => {
+                fallbackCopyToClipboard(textToCopy, keywords.length);
+            });
+        } else {
+            // Fallback для старых браузеров
+            fallbackCopyToClipboard(textToCopy, keywords.length);
+        }
+    }
+    
+    function fallbackCopyToClipboard(text, count) {
+        // Создаем временный textarea элемент
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        
+        try {
+            document.execCommand('copy');
+            showCopySuccess(count);
+        } catch (err) {
+            console.error('Fallback copy failed:', err);
+            alert('Не удалось скопировать кейворды в буфер обмена');
+        } finally {
+            document.body.removeChild(textArea);
+        }
+    }
+    
+    function showCopySuccess(count) {
+        // Показываем уведомление об успешном копировании
+        const copyButton = document.getElementById('copy-keywords');
+        const originalText = copyButton.textContent;
+        
+        copyButton.textContent = `✅ Скопировано ${count} кейворд${count > 1 ? (count < 5 ? 'а' : 'ов') : ''}!`;
+        copyButton.style.backgroundColor = '#28a745';
+        
+        setTimeout(() => {
+            copyButton.textContent = originalText;
+            copyButton.style.backgroundColor = '';
+        }, 2000);
+    }
+    
+    // Добавляем подсказку о функции Shift
+    if (keywordCheckboxes.length > 0) {
+        const firstCheckbox = keywordCheckboxes[0];
+        if (firstCheckbox) {
+            // Создаем элемент подсказки
+            const tooltip = document.createElement('div');
+            tooltip.className = 'shift-tooltip';
+            tooltip.innerHTML = '💡 Удерживайте <kbd>Shift</kbd> для выделения диапазона';
+            tooltip.style.display = 'none';
+            
+            // Добавляем подсказку после таблицы
+            const tableSection = document.querySelector('.table-section');
+            if (tableSection) {
+                tableSection.appendChild(tooltip);
+                
+                // Показываем подсказку на короткое время при загрузке страницы
+                setTimeout(() => {
+                    tooltip.style.display = 'block';
+                    setTimeout(() => {
+                        tooltip.style.display = 'none';
+                    }, 5000);
+                }, 1000);
+            }
+        }
+    }
 });
 </script>
+
 
 </body>
 </html>
