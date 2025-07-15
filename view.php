@@ -7,7 +7,7 @@ $countryFilter = $_GET['country'] ?? '';
 $minRpcFilter = $_GET['min_rpc'] ?? '';
 $minYahooRateFilter = $_GET['min_yahoo_rate'] ?? '';
 $page = max(1, intval($_GET['page'] ?? 1));
-$perPage = 50;
+$perPage = 1000;
 
 try {
     $pdo = getDBConnection();
@@ -72,7 +72,7 @@ try {
         FROM excel_data e 
         JOIN documents d ON e.document_id = d.id 
         $whereClause
-        ORDER BY e.id DESC 
+        ORDER BY e.est_rpc DESC, e.id DESC 
         LIMIT $perPage OFFSET $offset
     ";
     $dataStmt = $pdo->prepare($dataQuery);
@@ -197,11 +197,9 @@ try {
                                     <tr>
                                         <th>Keyword</th>
                                         <th>Yahoo Show Rate</th>
-                                        <th>Advertiser</th>
                                         <th>Est. RPC $</th>
                                         <th>Документ</th>
                                         <th>Страна</th>
-                                        <th>Дата загрузки</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -209,7 +207,6 @@ try {
                                         <tr>
                                             <td class="keyword-cell"><?= h($row['keyword']) ?></td>
                                             <td class="rate-cell"><?= h($row['yahoo_show_rate']) ?></td>
-                                            <td class="advertiser-cell"><?= h($row['advertiser']) ?></td>
                                             <td class="rpc-cell">
                                                 <?= $row['est_rpc'] !== null ? number_format($row['est_rpc'], 4) : '-' ?>
                                             </td>
@@ -217,7 +214,6 @@ try {
                                             <td class="country-cell">
                                                 <span class="country-badge"><?= h($row['country_code']) ?></span>
                                             </td>
-                                            <td class="date-cell"><?= formatDate($row['upload_date']) ?></td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
