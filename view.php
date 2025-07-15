@@ -190,10 +190,6 @@ try {
                             <div class="stat-number"><?= count($countries) ?></div>
                             <div class="stat-label">Стран</div>
                         </div>
-                        <div class="stat-item">
-                            <div class="stat-number"><?= $totalPages ?></div>
-                            <div class="stat-label">Страниц</div>
-                        </div>
                     </div>
                 </div>
 
