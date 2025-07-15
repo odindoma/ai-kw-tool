@@ -73,17 +73,20 @@ try {
             e.keyword,
             MAX(e.yahoo_show_rate) as yahoo_show_rate,
             MAX(e.est_rpc) as est_rpc,
+            e.status,
             d.original_filename, 
             d.country_code, 
             d.upload_date,
-            COUNT(*) as duplicate_count
+            COUNT(*) as duplicate_count,
+            GROUP_CONCAT(e.id) as record_ids
         FROM excel_data e 
         JOIN documents d ON e.document_id = d.id 
         $whereClause
-        GROUP BY e.document_id, e.keyword, d.original_filename, d.country_code, d.upload_date
+        GROUP BY e.document_id, e.keyword, e.status, d.original_filename, d.country_code, d.upload_date
         ORDER BY MAX(e.est_rpc) DESC, e.document_id DESC, e.keyword ASC
         LIMIT $perPage OFFSET $offset
     ";
+
     $dataStmt = $pdo->prepare($dataQuery);
     $dataStmt->execute($params);
     $data = $dataStmt->fetchAll();
@@ -195,33 +198,65 @@ try {
 
                 <!-- Таблица данных -->
                 <?php if (!empty($data)): ?>
+                    <!-- Панель массовых действий -->
+                    <div id="bulk-actions" class="bulk-actions" style="display: none;">
+                        <div class="bulk-actions-content">
+                            <span class="bulk-info">
+                                Выбрано кейвордов: <strong id="selected-count">0</strong>
+                            </span>
+                            <div class="bulk-buttons">
+                                <button id="set-used" class="bulk-button used-button">
+                                    Пометить как Used
+                                </button>
+                                <button id="set-new" class="bulk-button new-button">
+                                    Пометить как New
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                     <div class="table-section">
                         <div class="table-wrapper">
                             <table class="data-table">
                                 <thead>
                                     <tr>
+                                        <th class="checkbox-column">
+                                            <input type="checkbox" id="select-all" title="Выбрать все">
+                                        </th>
                                         <th>Keyword</th>
                                         <th>Yahoo Show Rate</th>
                                         <th>Est. RPC $</th>
+                                        <th>Status</th>
                                         <th>Документ</th>
                                         <th>Страна</th>
-                                        <th>Кол-во адвертов</th> <!-- Новая колонка -->
+                                        <th>Адверты</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($data as $row): ?>
                                         <tr>
+                                            <td class="checkbox-cell">
+                                                <input type="checkbox" class="keyword-checkbox" 
+                                                    value="<?= h($row['record_ids']) ?>" 
+                                                    data-keyword="<?= h($row['keyword']) ?>"
+                                                    data-document="<?= h($row['document_id']) ?>">
+                                            </td>
                                             <td class="keyword-cell"><?= h($row['keyword']) ?></td>
                                             <td class="rate-cell"><?= h($row['yahoo_show_rate']) ?></td>
                                             <td class="rpc-cell">
                                                 <?= $row['est_rpc'] !== null ? number_format($row['est_rpc'], 4) : '-' ?>
                                             </td>
+                                            <td class="status-cell">
+                                                <span class="status-badge status-<?= strtolower($row['status']) ?>">
+                                                    <?= h($row['status']) ?>
+                                                </span>
+                                            </td>
                                             <td class="document-cell"><?= h($row['original_filename']) ?></td>
                                             <td class="country-cell">
                                                 <span class="country-badge"><?= h($row['country_code']) ?></span>
                                             </td>
-                                            <td class="count-cell"><?= $row['duplicate_count'] ?></td> <!-- Новая колонка -->
+                                            <td class="count-cell"><?= $row['duplicate_count'] ?></td>
                                         </tr>
+
                                     <?php endforeach; ?>
                                 </tbody>
                             </table>
@@ -291,6 +326,95 @@ try {
             <?php endif; ?>
         </main>
     </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllCheckbox = document.getElementById('select-all');
+    const keywordCheckboxes = document.querySelectorAll('.keyword-checkbox');
+    const bulkActionsDiv = document.getElementById('bulk-actions');
+    const selectedCountSpan = document.getElementById('selected-count');
+    
+    // Обработчик для "Выбрать все"
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            keywordCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            updateBulkActions();
+        });
+    }
+    
+    // Обработчики для отдельных чекбоксов
+    keywordCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkActions);
+    });
+    
+    function updateBulkActions() {
+        const selectedCheckboxes = document.querySelectorAll('.keyword-checkbox:checked');
+        const count = selectedCheckboxes.length;
+        
+        if (count > 0) {
+            bulkActionsDiv.style.display = 'block';
+            selectedCountSpan.textContent = count;
+        } else {
+            bulkActionsDiv.style.display = 'none';
+        }
+        
+        // Обновляем состояние "Выбрать все"
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = count === keywordCheckboxes.length;
+            selectAllCheckbox.indeterminate = count > 0 && count < keywordCheckboxes.length;
+        }
+    }
+    
+    // Обработчики для кнопок изменения статуса
+    document.getElementById('set-used')?.addEventListener('click', function() {
+        updateSelectedStatus('Used');
+    });
+    
+    document.getElementById('set-new')?.addEventListener('click', function() {
+        updateSelectedStatus('New');
+    });
+    
+    function updateSelectedStatus(status) {
+        const selectedCheckboxes = document.querySelectorAll('.keyword-checkbox:checked');
+        const recordIds = [];
+        
+        selectedCheckboxes.forEach(checkbox => {
+            recordIds.push(checkbox.value);
+        });
+        
+        if (recordIds.length === 0) {
+            alert('Выберите хотя бы один кейворд');
+            return;
+        }
+        
+        // Отправляем AJAX запрос
+        fetch('update_status.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                record_ids: recordIds,
+                status: status
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload(); // Перезагружаем страницу для обновления данных
+            } else {
+                alert('Ошибка при обновлении статуса: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Произошла ошибка при обновлении статуса');
+        });
+    }
+});
+</script>
+
 </body>
 </html>
 

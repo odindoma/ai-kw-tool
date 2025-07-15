@@ -375,3 +375,117 @@
     }
 }
 
+/* Стили для чекбоксов и массовых действий */
+.checkbox-column {
+    width: 40px;
+    text-align: center;
+}
+
+.checkbox-cell {
+    text-align: center;
+    width: 40px;
+}
+
+.keyword-checkbox, #select-all {
+    cursor: pointer;
+}
+
+/* Панель массовых действий */
+.bulk-actions {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.bulk-actions-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.bulk-info {
+    font-size: 14px;
+    color: #495057;
+}
+
+.bulk-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.bulk-button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.used-button {
+    background-color: #dc3545;
+    color: white;
+}
+
+.used-button:hover {
+    background-color: #c82333;
+}
+
+.new-button {
+    background-color: #28a745;
+    color: white;
+}
+
+.new-button:hover {
+    background-color: #218838;
+}
+
+/* Стили для статусов */
+.status-cell {
+    text-align: center;
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-new {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-used {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.count-cell {
+    text-align: center;
+    font-weight: 500;
+    color: #6c757d;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .bulk-actions-content {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .bulk-buttons {
+        justify-content: center;
+    }
+}
+

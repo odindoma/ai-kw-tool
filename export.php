@@ -42,15 +42,17 @@ try {
             e.keyword,
             MAX(e.yahoo_show_rate) as yahoo_show_rate,
             MAX(e.est_rpc) as est_rpc,
+            e.status,
             d.original_filename, 
             d.country_code,
             COUNT(*) as duplicate_count
         FROM excel_data e 
         JOIN documents d ON e.document_id = d.id 
         $whereClause
-        GROUP BY e.document_id, e.keyword, d.original_filename, d.country_code
+        GROUP BY e.document_id, e.keyword, e.status, d.original_filename, d.country_code
         ORDER BY MAX(e.est_rpc) DESC, e.document_id DESC, e.keyword ASC
     ";
+
     
     $dataStmt = $pdo->prepare($dataQuery);
     $dataStmt->execute($params);
@@ -105,6 +107,7 @@ try {
         'Keyword',
         'Yahoo Show Rate',
         'Est. RPC $',
+        'Status',
         'Document',
         'Country Code',
         'Records Count'
@@ -119,6 +122,7 @@ try {
             $record['keyword'],
             $record['yahoo_show_rate'],
             $record['est_rpc'] !== null ? number_format($record['est_rpc'], 4, '.', '') : '',
+            $record['status'],
             $record['original_filename'],
             $record['country_code'],
             $record['duplicate_count']
