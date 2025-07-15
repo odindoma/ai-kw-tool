@@ -54,9 +54,9 @@ try {
     
     $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
     
-    // Подсчет общего количества записей
+    // Подсчет общего количества записей (уникальных комбинаций document_id + keyword)
     $countQuery = "
-        SELECT COUNT(*) 
+        SELECT COUNT(DISTINCT CONCAT(e.document_id, '|', e.keyword)) 
         FROM excel_data e 
         JOIN documents d ON e.document_id = d.id 
         $whereClause
@@ -68,11 +68,20 @@ try {
     // Получение данных с пагинацией
     $offset = ($page - 1) * $perPage;
     $dataQuery = "
-        SELECT e.*, d.original_filename, d.country_code, d.upload_date
+        SELECT 
+            e.document_id,
+            e.keyword,
+            MAX(e.yahoo_show_rate) as yahoo_show_rate,
+            MAX(e.est_rpc) as est_rpc,
+            d.original_filename, 
+            d.country_code, 
+            d.upload_date,
+            COUNT(*) as duplicate_count
         FROM excel_data e 
         JOIN documents d ON e.document_id = d.id 
         $whereClause
-        ORDER BY e.est_rpc DESC, e.id DESC 
+        GROUP BY e.document_id, e.keyword, d.original_filename, d.country_code, d.upload_date
+        ORDER BY MAX(e.est_rpc) DESC, e.document_id DESC, e.keyword ASC
         LIMIT $perPage OFFSET $offset
     ";
     $dataStmt = $pdo->prepare($dataQuery);
@@ -200,6 +209,7 @@ try {
                                         <th>Est. RPC $</th>
                                         <th>Документ</th>
                                         <th>Страна</th>
+                                        <th>Кол-во адвертов</th> <!-- Новая колонка -->
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -214,6 +224,7 @@ try {
                                             <td class="country-cell">
                                                 <span class="country-badge"><?= h($row['country_code']) ?></span>
                                             </td>
+                                            <td class="count-cell"><?= $row['duplicate_count'] ?></td> <!-- Новая колонка -->
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
