@@ -205,6 +205,9 @@ try {
                                 Выбрано кейвордов: <strong id="selected-count">0</strong>
                             </span>
                             <div class="bulk-buttons">
+                                <button id="copy-keywords" class="bulk-button copy-button">
+                                    📋 Копировать кейворды
+                                </button>
                                 <button id="set-used" class="bulk-button used-button">
                                     Пометить как Used
                                 </button>
@@ -374,6 +377,86 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('set-new')?.addEventListener('click', function() {
         updateSelectedStatus('New');
     });
+
+    // Обработчик для кнопки копирования
+    document.getElementById('copy-keywords')?.addEventListener('click', function() {
+        copySelectedKeywords();
+    });
+
+    function copySelectedKeywords() {
+        const selectedCheckboxes = document.querySelectorAll('.keyword-checkbox:checked');
+        
+        if (selectedCheckboxes.length === 0) {
+            alert('Выберите хотя бы один кейворд для копирования');
+            return;
+        }
+        
+        // Собираем кейворды из data-атрибутов
+        const keywords = [];
+        selectedCheckboxes.forEach(checkbox => {
+            const keyword = checkbox.getAttribute('data-keyword');
+            if (keyword && !keywords.includes(keyword)) {
+                keywords.push(keyword);
+            }
+        });
+        
+        if (keywords.length === 0) {
+            alert('Не удалось получить кейворды для копирования');
+            return;
+        }
+        
+        // Создаем текст для копирования (каждый кейворд с новой строки)
+        const textToCopy = keywords.join('\n');
+        
+        // Копируем в буфер обмена
+        if (navigator.clipboard && window.isSecureContext) {
+            // Современный способ через Clipboard API
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                showCopySuccess(keywords.length);
+            }).catch(() => {
+                fallbackCopyToClipboard(textToCopy, keywords.length);
+            });
+        } else {
+            // Fallback для старых браузеров
+            fallbackCopyToClipboard(textToCopy, keywords.length);
+        }
+    }
+
+    function fallbackCopyToClipboard(text, count) {
+        // Создаем временный textarea элемент
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        
+        try {
+            document.execCommand('copy');
+            showCopySuccess(count);
+        } catch (err) {
+            console.error('Fallback copy failed:', err);
+            alert('Не удалось скопировать кейворды в буфер обмена');
+        } finally {
+            document.body.removeChild(textArea);
+        }
+    }
+
+    function showCopySuccess(count) {
+        // Показываем уведомление об успешном копировании
+        const copyButton = document.getElementById('copy-keywords');
+        const originalText = copyButton.textContent;
+        
+        copyButton.textContent = `✅ Скопировано ${count} кейворд${count > 1 ? (count < 5 ? 'а' : 'ов') : ''}!`;
+        copyButton.style.backgroundColor = '#28a745';
+        
+        setTimeout(() => {
+            copyButton.textContent = originalText;
+            copyButton.style.backgroundColor = '';
+        }, 2000);
+    }
+
     
     function updateSelectedStatus(status) {
         const selectedCheckboxes = document.querySelectorAll('.keyword-checkbox:checked');
