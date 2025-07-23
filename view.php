@@ -6,6 +6,7 @@ $documentFilter = $_GET['document'] ?? '';
 $countryFilter = $_GET['country'] ?? '';
 $minRpcFilter = $_GET['min_rpc'] ?? '';
 $minYahooRateFilter = $_GET['min_yahoo_rate'] ?? '';
+$statusFilter = $_GET['status'] ?? '';
 $page = max(1, intval($_GET['page'] ?? 1));
 $perPage = 1000;
 
@@ -27,6 +28,15 @@ try {
         ORDER BY country_code
     ");
     $countries = $countriesStmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    // Получение уникальных статусов
+    $statusesStmt = $pdo->query("
+        SELECT DISTINCT status 
+        FROM excel_data 
+        WHERE status IS NOT NULL AND status != ''
+        ORDER BY status
+    ");
+    $statuses = $statusesStmt->fetchAll(PDO::FETCH_COLUMN);
     
     // Построение запроса с фильтрами
     $whereConditions = [];
@@ -50,6 +60,11 @@ try {
     if (!empty($minYahooRateFilter) && is_numeric($minYahooRateFilter)) {
         $whereConditions[] = "CAST(REPLACE(REPLACE(e.yahoo_show_rate, '%', ''), ',', '.') AS DECIMAL(5,2)) >= ?";
         $params[] = floatval($minYahooRateFilter);
+    }
+    
+    if (!empty($statusFilter)) {
+        $whereConditions[] = "e.status = ?";
+        $params[] = $statusFilter;
     }
     
     $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
@@ -148,19 +163,31 @@ try {
                                     <?php foreach ($countries as $country): ?>
                                         <option value="<?= h($country) ?>" <?= $countryFilter == $country ? 'selected' : '' ?>>
                                             <?= h($country) ?>
+                                        </option>   
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <div class="filter-group">
+                                <label for="status">Статус:</label>
+                                <select name="status" id="status">
+                                    <option value="">Все статусы</option>
+                                    <?php foreach ($statuses as $status): ?>
+                                        <option value="<?= h($status) ?>" <?= $statusFilter == $status ? 'selected' : '' ?>>
+                                            <?= h($status) ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
                             
                             <div class="filter-group">
-                                <label for="min_rpc">Минимальное Est. RPC $:</label>
+                                <label for="min_rpc">Мин. Est. RPC $:</label>
                                 <input type="number" name="min_rpc" id="min_rpc" step="0.0001" 
                                        value="<?= h($minRpcFilter) ?>" placeholder="0.0000">
                             </div>
                             
                             <div class="filter-group">
-                                <label for="min_yahoo_rate">Минимальное Yahoo Show Rate %:</label>
+                                <label for="min_yahoo_rate">Мин. Y! Show Rate %:</label>
                                 <input type="number" name="min_yahoo_rate" id="min_yahoo_rate" step="0.01" 
                                        value="<?= h($minYahooRateFilter) ?>" placeholder="0.00">
                             </div>
