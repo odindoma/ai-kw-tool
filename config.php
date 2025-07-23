@@ -2,8 +2,8 @@
 // Конфигурация базы данных
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'excel_data_db');
-define('DB_USER', 'root'); // Измените на ваш пользователь БД
-define('DB_PASS', ''); // Измените на ваш пароль БД
+define('DB_USER', 'homestead'); // Измените на ваш пользователь БД
+define('DB_PASS', 'secret'); // Измените на ваш пароль БД
 define('DB_CHARSET', 'utf8mb4');
 
 // Настройки загрузки файлов
