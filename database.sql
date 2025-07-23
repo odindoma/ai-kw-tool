@@ -7,9 +7,11 @@ CREATE TABLE IF NOT EXISTS documents (
     id INT AUTO_INCREMENT PRIMARY KEY,
     filename VARCHAR(255) NOT NULL,
     original_filename VARCHAR(255) NOT NULL,
+    agent_type VARCHAR(50) NOT NULL,
     country_code VARCHAR(10) NOT NULL,
     upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     records_count INT DEFAULT 0,
+    INDEX idx_agent_type (agent_type),
     INDEX idx_country_code (country_code),
     INDEX idx_upload_date (upload_date)
 );

@@ -337,3 +337,174 @@ body {
     }
 }
 
+
+
+/* Стили для секции загруженных файлов */
+.uploaded-files-section {
+    background: white;
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    margin-top: 30px;
+}
+
+.uploaded-files-section h3 {
+    font-size: 1.5rem;
+    margin-bottom: 25px;
+    color: #333;
+    text-align: center;
+}
+
+.agents-table-wrapper {
+    overflow-x: auto;
+    margin-bottom: 25px;
+}
+
+.agents-table {
+    width: 100%;
+    border-collapse: collapse;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.agents-table th {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px 20px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.agents-table td {
+    padding: 15px 20px;
+    border-bottom: 1px solid #f1f3f4;
+    vertical-align: middle;
+}
+
+.agents-table tr:hover {
+    background: #f8f9fa;
+}
+
+.agents-table tr:last-child td {
+    border-bottom: none;
+}
+
+.agent-type-cell {
+    width: 200px;
+    font-weight: 500;
+}
+
+.agent-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.countries-cell {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.country-tag {
+    display: inline-block;
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border: 1px solid #bbdefb;
+    transition: all 0.3s ease;
+}
+
+.country-tag:hover {
+    background: #bbdefb;
+    transform: translateY(-1px);
+}
+
+.stats-summary {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 15px;
+    margin-top: 20px;
+}
+
+.summary-item {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.summary-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #667eea;
+}
+
+.summary-label {
+    font-size: 0.9rem;
+    color: #666;
+    font-weight: 500;
+}
+
+/* Адаптивность для таблицы агентов */
+@media (max-width: 768px) {
+    .agents-table th,
+    .agents-table td {
+        padding: 12px 15px;
+    }
+    
+    .agent-type-cell {
+        width: auto;
+    }
+    
+    .countries-cell {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .stats-summary {
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .summary-number {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .uploaded-files-section {
+        padding: 20px 15px;
+    }
+    
+    .agents-table th,
+    .agents-table td {
+        padding: 10px 12px;
+    }
+    
+    .agent-badge {
+        font-size: 0.8rem;
+        padding: 6px 12px;
+    }
+    
+    .country-tag {
+        font-size: 0.8rem;
+        padding: 4px 8px;
+    }
+}
+

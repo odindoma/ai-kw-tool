@@ -127,7 +127,8 @@ class ExcelUploadHandler {
             
             // Сохранение документа в БД
             $countryCode = extractCountryCode($originalFilename);
-            $documentId = $this->saveDocument($originalFilename, $filepath, $countryCode);
+            $agentType = extractAgentType($originalFilename);
+            $documentId = $this->saveDocument($originalFilename, $filepath, $countryCode, $agentType);
             
             // Обработка данных
             $processedCount = 0;
@@ -207,15 +208,16 @@ class ExcelUploadHandler {
         return array_merge(['success' => true], $map);
     }
     
-    private function saveDocument($originalFilename, $filepath, $countryCode) {
+    private function saveDocument($originalFilename, $filepath, $countryCode, $agentType) {
         $stmt = $this->pdo->prepare("
-            INSERT INTO documents (filename, original_filename, country_code) 
-            VALUES (?, ?, ?)
+            INSERT INTO documents (filename, original_filename, agent_type, country_code) 
+            VALUES (?, ?, ?, ?)
         ");
         
         $stmt->execute([
             basename($filepath),
             $originalFilename,
+            $agentType,
             $countryCode
         ]);
         

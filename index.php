@@ -1,3 +1,45 @@
+<?php
+require_once 'config.php';
+
+// Получение информации о загруженных файлах
+$agentData = [];
+try {
+    $pdo = getDBConnection();
+    $stmt = $pdo->query("
+        SELECT original_filename, country_code, upload_date, records_count 
+        FROM documents 
+        ORDER BY upload_date DESC
+    ");
+    $documents = $stmt->fetchAll();
+    
+    // Группировка по типам ИИ-агентов
+    foreach ($documents as $doc) {
+        $agentType = extractAgentType($doc['original_filename']);
+        $countryCode = $doc['country_code'];
+        
+        if (!isset($agentData[$agentType])) {
+            $agentData[$agentType] = [];
+        }
+        
+        if (!in_array($countryCode, $agentData[$agentType])) {
+            $agentData[$agentType][] = $countryCode;
+        }
+    }
+    
+    // Сортировка кодов стран для каждого агента
+    foreach ($agentData as $agent => $countries) {
+        sort($agentData[$agent]);
+    }
+    
+    // Сортировка агентов по названию
+    ksort($agentData);
+    
+} catch (Exception $e) {
+    $agentData = [];
+    $error = "Ошибка при получении данных: " . $e->getMessage();
+}
+?>
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -84,6 +126,51 @@
                     </div>
                 </div>
             </div>
+
+            <?php if (!empty($agentData)): ?>
+            <div class="uploaded-files-section">
+                <h3>Загруженные файлы по типам ИИ-агентов</h3>
+                <div class="agents-table-wrapper">
+                    <table class="agents-table">
+                        <thead>
+                            <tr>
+                                <th>Тип ИИ-агента</th>
+                                <th>Коды стран</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($agentData as $agentType => $countries): ?>
+                                <tr>
+                                    <td class="agent-type-cell">
+                                        <span class="agent-badge"><?= h($agentType) ?></span>
+                                    </td>
+                                    <td class="countries-cell">
+                                        <?php foreach ($countries as $country): ?>
+                                            <span class="country-tag"><?= h($country) ?></span>
+                                        <?php endforeach; ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="stats-summary">
+                    <div class="summary-item">
+                        <span class="summary-number"><?= count($agentData) ?></span>
+                        <span class="summary-label">типов агентов</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-number"><?= count($documents ?? []) ?></span>
+                        <span class="summary-label">файлов загружено</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-number"><?= array_sum(array_map('count', $agentData)) ?></span>
+                        <span class="summary-label">уникальных комбинаций</span>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
         </main>
     </div>
 
