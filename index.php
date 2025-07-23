@@ -5,24 +5,59 @@ require_once 'config.php';
 $agentData = [];
 try {
     $pdo = getDBConnection();
-    $stmt = $pdo->query("
-        SELECT original_filename, country_code, upload_date, records_count 
-        FROM documents 
-        ORDER BY upload_date DESC
-    ");
-    $documents = $stmt->fetchAll();
     
-    // Группировка по типам ИИ-агентов
-    foreach ($documents as $doc) {
-        $agentType = extractAgentType($doc['original_filename']);
-        $countryCode = $doc['country_code'];
+    // Проверяем наличие колонки agent_type
+    $hasAgentTypeColumn = false;
+    try {
+        $stmt = $pdo->query("SHOW COLUMNS FROM documents LIKE 'agent_type'");
+        $hasAgentTypeColumn = $stmt->rowCount() > 0;
+    } catch (Exception $e) {
+        $hasAgentTypeColumn = false;
+    }
+    
+    if ($hasAgentTypeColumn) {
+        // Новая версия с agent_type
+        $stmt = $pdo->query("
+            SELECT original_filename, agent_type, country_code, upload_date, records_count 
+            FROM documents 
+            ORDER BY upload_date DESC
+        ");
+        $documents = $stmt->fetchAll();
         
-        if (!isset($agentData[$agentType])) {
-            $agentData[$agentType] = [];
+        // Группировка по типам ИИ-агентов
+        foreach ($documents as $doc) {
+            $agentType = $doc['agent_type'];
+            $countryCode = $doc['country_code'];
+            
+            if (!isset($agentData[$agentType])) {
+                $agentData[$agentType] = [];
+            }
+            
+            if (!in_array($countryCode, $agentData[$agentType])) {
+                $agentData[$agentType][] = $countryCode;
+            }
         }
+    } else {
+        // Старая версия без agent_type
+        $stmt = $pdo->query("
+            SELECT original_filename, country_code, upload_date, records_count 
+            FROM documents 
+            ORDER BY upload_date DESC
+        ");
+        $documents = $stmt->fetchAll();
         
-        if (!in_array($countryCode, $agentData[$agentType])) {
-            $agentData[$agentType][] = $countryCode;
+        // Группировка по типам ИИ-агентов (извлекаем из имени файла)
+        foreach ($documents as $doc) {
+            $agentType = extractAgentType($doc['original_filename']);
+            $countryCode = $doc['country_code'];
+            
+            if (!isset($agentData[$agentType])) {
+                $agentData[$agentType] = [];
+            }
+            
+            if (!in_array($countryCode, $agentData[$agentType])) {
+                $agentData[$agentType][] = $countryCode;
+            }
         }
     }
     

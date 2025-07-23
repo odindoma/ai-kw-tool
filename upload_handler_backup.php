@@ -6,20 +6,9 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ExcelUploadHandler {
     private $pdo;
-    private $hasAgentTypeColumn = false;
     
     public function __construct() {
         $this->pdo = getDBConnection();
-        $this->checkAgentTypeColumn();
-    }
-    
-    private function checkAgentTypeColumn() {
-        try {
-            $stmt = $this->pdo->query("SHOW COLUMNS FROM documents LIKE 'agent_type'");
-            $this->hasAgentTypeColumn = $stmt->rowCount() > 0;
-        } catch (Exception $e) {
-            $this->hasAgentTypeColumn = false;
-        }
     }
     
     public function handleUpload($file) {
@@ -220,32 +209,17 @@ class ExcelUploadHandler {
     }
     
     private function saveDocument($originalFilename, $filepath, $countryCode, $agentType) {
-        if ($this->hasAgentTypeColumn) {
-            // Новая версия с agent_type
-            $stmt = $this->pdo->prepare("
-                INSERT INTO documents (filename, original_filename, agent_type, country_code) 
-                VALUES (?, ?, ?, ?)
-            ");
-            
-            $stmt->execute([
-                basename($filepath),
-                $originalFilename,
-                $agentType,
-                $countryCode
-            ]);
-        } else {
-            // Старая версия без agent_type
-            $stmt = $this->pdo->prepare("
-                INSERT INTO documents (filename, original_filename, country_code) 
-                VALUES (?, ?, ?)
-            ");
-            
-            $stmt->execute([
-                basename($filepath),
-                $originalFilename,
-                $countryCode
-            ]);
-        }
+        $stmt = $this->pdo->prepare("
+            INSERT INTO documents (filename, original_filename, agent_type, country_code) 
+            VALUES (?, ?, ?, ?)
+        ");
+        
+        $stmt->execute([
+            basename($filepath),
+            $originalFilename,
+            $agentType,
+            $countryCode
+        ]);
         
         return $this->pdo->lastInsertId();
     }
